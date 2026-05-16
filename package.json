@@ -13,7 +13,7 @@
   },
   "type": "module",
   "bin": {
-    "scx": "./bin/scx.js"
+    "scx": "bin/scx.js"
   },
   "files": [
     "bin",
