@@ -2,6 +2,15 @@
   "name": "@yamamuteki/scx",
   "version": "0.1.0",
   "description": "Simple Currency eXchanger for stdin streams",
+  "author": "yamamuteki",
+  "homepage": "https://github.com/yamamuteki/scx#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yamamuteki/scx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yamamuteki/scx/issues"
+  },
   "type": "module",
   "bin": {
     "scx": "./bin/scx.js"
