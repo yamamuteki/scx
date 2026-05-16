@@ -1,0 +1,31 @@
+{
+  "name": "@yamamuteki/scx",
+  "version": "0.1.0",
+  "description": "Simple Currency eXchanger for stdin streams",
+  "type": "module",
+  "bin": {
+    "scx": "./bin/scx.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node bin/scx.js"
+  },
+  "keywords": [
+    "currency",
+    "exchange",
+    "converter",
+    "cli",
+    "stdin",
+    "ccusage"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  }
+}
