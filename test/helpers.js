@@ -11,5 +11,6 @@ export function runScx(args = [], stdin = "") {
   return spawnSync(process.execPath, [cliPath, ...args], {
     input: stdin,
     encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
   });
 }
