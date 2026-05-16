@@ -17,7 +17,7 @@ program
   .version(packageJson.version)
   .option("-c, --currency <code>", "target currency code", "JPY")
   .requiredOption("-r, --rate <number>", "exchange rate from USD to target currency")
-  .option("-l, --locale <locale>", "locale for currency formatting", "ja-JP")
+  .option("-l, --locale <locale>", "locale for currency formatting", "en-US")
   .parse(process.argv);
 
 const options = program.opts();

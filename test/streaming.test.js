@@ -10,7 +10,7 @@ describe("large input handling", () => {
     }
     const input = lines.join("\n");
 
-    const { stdout, status } = runScx(["-c", "JPY", "-r", "155"], input);
+    const { stdout, status } = runScx(["-c", "JPY", "-r", "155", "-l", "ja-JP"], input);
     assert.equal(status, 0);
 
     const outLines = stdout.split("\n");
@@ -22,7 +22,7 @@ describe("large input handling", () => {
 
   test("handles a multi-megabyte input without truncation", () => {
     const block = "Price: $10\n".repeat(200_000);
-    const { stdout, status } = runScx(["-c", "JPY", "-r", "155"], block);
+    const { stdout, status } = runScx(["-c", "JPY", "-r", "155", "-l", "ja-JP"], block);
     assert.equal(status, 0);
 
     const matches = stdout.match(/￥1,550/g);
