@@ -11,7 +11,8 @@
     "README.md"
   ],
   "scripts": {
-    "start": "node bin/scx.js"
+    "start": "node bin/scx.js",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "keywords": [
     "currency",

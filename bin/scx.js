@@ -45,7 +45,7 @@ try {
   process.exit(1);
 }
 
-const usdPattern = /\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/g;
+const usdPattern = /\$(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)/g;
 
 function convert(input) {
   return input.replace(usdPattern, (_match, amount) => {
