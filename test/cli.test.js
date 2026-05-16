@@ -30,6 +30,13 @@ describe("--version / --help", () => {
     assert.match(stdout, /-l, --locale/);
   });
 
+  test("--help includes an Examples section", () => {
+    const { stdout, status } = runScx(["--help"]);
+    assert.equal(status, 0);
+    assert.match(stdout, /Examples:/);
+    assert.match(stdout, /ccusage \| scx/);
+  });
+
   test("-h is an alias for --help", () => {
     const { stdout, status } = runScx(["-h"]);
     assert.equal(status, 0);
