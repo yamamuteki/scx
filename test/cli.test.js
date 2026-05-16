@@ -71,6 +71,6 @@ describe("argument validation", () => {
   test("accepts lowercase --currency by normalizing to uppercase", () => {
     const { status, stdout } = runScx(["-r", "155", "-c", "jpy"], "Total: $1.00");
     assert.equal(status, 0);
-    assert.match(stdout, /￥155/);
+    assert.match(stdout, /¥155/);
   });
 });

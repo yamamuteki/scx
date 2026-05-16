@@ -32,7 +32,7 @@ scx -c <currency> -r <rate> [-l <locale>]
 |---|---|---|
 | `-c, --currency <code>` | ISO 4217 currency code to convert to (e.g. `JPY`, `EUR`, `VND`, `KRW`) | `JPY` |
 | `-r, --rate <number>` | Exchange rate from USD to the target currency. **Required.** | — |
-| `-l, --locale <locale>` | BCP 47 locale used by `Intl.NumberFormat` (e.g. `ja-JP`, `en-US`, `de-DE`, `vi-VN`) | `ja-JP` |
+| `-l, --locale <locale>` | BCP 47 locale used by `Intl.NumberFormat` (e.g. `en-US`, `ja-JP`, `de-DE`, `vi-VN`) | `en-US` |
 | `-h, --help` | Show help | — |
 | `-V, --version` | Show version | — |
 
@@ -41,14 +41,14 @@ scx -c <currency> -r <rate> [-l <locale>]
 Convert a piped string:
 
 ```bash
-echo 'Today: $1.23 Total: $45.67' | scx -c JPY -r 155 -l ja-JP
-# => Today: ￥191 Total: ￥7,079
+echo 'Today: $1.23 Total: $45.67' | scx -c JPY -r 155
+# => Today: ¥191 Total: ¥7,079
 ```
 
 Show `ccusage` output in Japanese yen:
 
 ```bash
-npx ccusage | npx @yamamuteki/scx -c JPY -r 155 -l ja-JP
+npx ccusage | npx @yamamuteki/scx -c JPY -r 155
 ```
 
 Show it in euros with German formatting:
