@@ -14,7 +14,8 @@
     "start": "node bin/scx.js",
     "test": "node --test test/*.test.js",
     "lint": "biome ci",
-    "format": "biome check --write"
+    "format": "biome check --write",
+    "prepublishOnly": "npm run lint && npm test"
   },
   "keywords": [
     "currency",
