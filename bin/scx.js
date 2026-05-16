@@ -18,6 +18,15 @@ program
   .option("-c, --currency <code>", "target currency code", "JPY")
   .requiredOption("-r, --rate <number>", "exchange rate from USD to target currency")
   .option("-l, --locale <locale>", "locale for currency formatting", "en-US")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ echo 'Total: $12.34' | scx -c JPY -r 155
+  $ ccusage | scx -c JPY -r 155
+  $ ccusage | scx -c EUR -r 0.92 -l de-DE
+  $ scx -c VND -r 25400 -l vi-VN < report.txt`,
+  )
   .parse(process.argv);
 
 const options = program.opts();
