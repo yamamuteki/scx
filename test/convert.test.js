@@ -52,6 +52,20 @@ describe("USD pattern detection", () => {
   });
 });
 
+describe("ANSI-colored input (ccusage compatibility)", () => {
+  test("preserves ANSI escape sequences around converted amounts", () => {
+    const input = "[36mTotal: $12.34[39m";
+    const expected = "[36mTotal: ￥1,913[39m";
+    assert.equal(convertJPY(input), expected);
+  });
+
+  test("converts amounts inside a multi-segment colored table cell", () => {
+    const input = "[90m│[39m   $19.18 [90m│[39m";
+    const expected = "[90m│[39m   ￥2,973 [90m│[39m";
+    assert.equal(convertJPY(input), expected);
+  });
+});
+
 describe("locale and currency variations", () => {
   test("EUR + de-DE formats with comma decimal separator", () => {
     const { stdout, status } = runScx(
