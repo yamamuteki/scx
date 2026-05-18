@@ -38,9 +38,10 @@ scx -c <currency> -r <rate> [-l <locale>]
 | `-c, --currency <code>` | ISO 4217 currency code to convert to (e.g. `JPY`, `EUR`, `VND`, `KRW`) | `JPY` |
 | `-r, --rate <number>` | Exchange rate from USD to the target currency. **Required.** | — |
 | `-l, --locale <locale>` | BCP 47 locale used by `Intl.NumberFormat` (e.g. `en-US`, `ja-JP`, `de-DE`, `vi-VN`) | `en-US` |
-| `--json` | Treat stdin as a JSON document and convert cost fields in place | off |
+| `--json` | Treat stdin as a JSON document and convert cost fields in place. Parse errors exit with status 1 | off |
 | `--json-key <key>` | Extra key name(s) to treat as USD cost. Repeatable or comma-separated. | — |
-| `--json-cost-string` | In `--json` mode, replace cost numbers with formatted currency strings (e.g. `"¥2,973"`) instead of plain numbers | off |
+| `--json-cost-string` | In JSON mode, replace cost numbers with formatted currency strings (e.g. `"¥2,973"`) instead of plain numbers | off |
+| `--no-auto-json` | Disable JSON input auto-detection; always run in text mode | auto on |
 | `-h, --help` | Show help | — |
 | `-V, --version` | Show version | — |
 
@@ -71,10 +72,10 @@ Show it in Vietnamese dong:
 npx ccusage | scx -c VND -r 25400 -l vi-VN
 ```
 
-Convert `ccusage --json` output, keeping cost values as numbers:
+Convert `ccusage --json` output (JSON is auto-detected; cost values stay as numbers):
 
 ```bash
-npx ccusage daily --json | scx -c JPY -r 155 --json
+npx ccusage daily --json | scx -c JPY -r 155
 ```
 
 ### Claude Code statusline
@@ -121,10 +122,16 @@ Because matching requires a literal `$` prefix, inputs without one — for examp
 
 ## JSON mode
 
-With `--json`, `scx` reads stdin as a single JSON document, walks it recursively, and rewrites the values of known USD cost keys. Other numeric fields (token counts, timestamps, ratios, etc.) are left untouched.
+In JSON mode `scx` reads stdin as a single JSON document, walks it recursively, and rewrites the values of known USD cost keys. Other numeric fields (token counts, timestamps, ratios, etc.) are left untouched.
+
+JSON mode is enabled in two ways:
+
+- **Auto-detection (default)**: if the input's first non-whitespace character (after skipping a UTF-8 BOM) is `{` or `[`, `scx` tries to parse it as JSON. If parsing succeeds, JSON mode runs; if it fails, `scx` silently falls back to text mode so well-formed text starting with `{` is never broken. Disable with `--no-auto-json`.
+- **Explicit `--json`**: forces JSON mode. Parse errors exit with status 1 instead of falling back. Use this when you want a parse failure to be loud (e.g. in CI).
 
 ```bash
-ccusage daily --json | scx -c JPY -r 155 --json
+ccusage daily --json | scx -c JPY -r 155          # auto-detected
+ccusage daily --json | scx -c JPY -r 155 --json   # forced; fails loudly on bad JSON
 ```
 
 ### Default cost keys

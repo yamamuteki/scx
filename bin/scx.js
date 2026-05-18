@@ -40,6 +40,7 @@ program
     "in --json mode, replace cost numbers with formatted currency strings",
     false,
   )
+  .option("--no-auto-json", "disable JSON input auto-detection (default: on)")
   .addHelpText(
     "after",
     `
@@ -47,8 +48,8 @@ Examples:
   $ echo 'Total: $12.34' | scx -c JPY -r 155
   $ ccusage | scx -c JPY -r 155
   $ ccusage | scx -c EUR -r 0.92 -l de-DE
-  $ ccusage daily --json | scx -c JPY -r 155 --json
-  $ ccusage daily --json | scx -c JPY -r 155 --json --json-cost-string`,
+  $ ccusage daily --json | scx -c JPY -r 155              # JSON auto-detected
+  $ ccusage daily --json | scx -c JPY -r 155 --json-cost-string`,
   )
   .parse(process.argv);
 
@@ -101,13 +102,17 @@ function convertText(input) {
   });
 }
 
-function convertJson(input) {
+function convertJson(input, { strict }) {
   let parsed;
   try {
-    parsed = JSON.parse(input);
+    const stripped = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
+    parsed = JSON.parse(stripped);
   } catch (err) {
-    process.stderr.write(`scx: invalid JSON input: ${err.message}\n`);
-    process.exit(1);
+    if (strict) {
+      process.stderr.write(`scx: invalid JSON input: ${err.message}\n`);
+      process.exit(1);
+    }
+    return null;
   }
 
   const costKeys = new Set([...DEFAULT_JSON_COST_KEYS, ...options.jsonKey]);
@@ -134,6 +139,13 @@ function convertJson(input) {
   return `${JSON.stringify(transform(parsed, false), null, 2)}\n`;
 }
 
+function looksLikeJson(input) {
+  let i = 0;
+  if (input.charCodeAt(0) === 0xfeff) i = 1;
+  while (i < input.length && /\s/.test(input[i])) i++;
+  return input[i] === "{" || input[i] === "[";
+}
+
 process.stdin.setEncoding("utf8");
 
 let buffer = "";
@@ -141,7 +153,14 @@ process.stdin.on("data", (chunk) => {
   buffer += chunk;
 });
 process.stdin.on("end", () => {
-  const output = options.json ? convertJson(buffer) : convertText(buffer);
+  let output;
+  if (options.json) {
+    output = convertJson(buffer, { strict: true });
+  } else if (options.autoJson && looksLikeJson(buffer)) {
+    output = convertJson(buffer, { strict: false }) ?? convertText(buffer);
+  } else {
+    output = convertText(buffer);
+  }
   process.stdout.write(output);
 });
 process.stdin.on("error", (err) => {
