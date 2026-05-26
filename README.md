@@ -106,6 +106,15 @@ scx config unset rate               # remove a key
 
 `scx config set rate <number>` stores `rate` as the structured `{ value, currency, updatedAt }` object using the already-configured `currency` (or the built-in default `JPY` when none is set). Values are validated before writing — `currency` must be a known ISO 4217 code, `rate` must be a positive number, and `locale` must be a recognized BCP 47 tag.
 
+### Fetching the rate automatically
+
+```bash
+scx config update                   # fetch USD->JPY (current currency) from frankfurter.dev
+scx config update -c EUR            # fetch USD->EUR; also updates config.currency to EUR
+```
+
+The rate comes from [Frankfurter](https://frankfurter.dev/), a free public API that tracks European Central Bank reference rates. No API key needed. The fetched value is written to the config exactly the same shape as `scx config set rate <number>`, with `updatedAt` reflecting when the fetch happened. Network failures, HTTP errors, and timeouts (5 s) exit with status 1; the stale config is left untouched. Override the target currency with `-c <code>` or `SCX_CURRENCY`.
+
 ## Examples
 
 Convert a piped string:

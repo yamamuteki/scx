@@ -14,6 +14,8 @@ const DEFAULT_CURRENCY = "JPY";
 const DEFAULT_LOCALE = "en-US";
 const DEFAULT_JSON_COST_KEYS = ["totalCost", "costUSD", "cost", "costPerHour"];
 const VALID_SET_CONFIG_KEYS = ["currency", "rate", "locale"];
+const RATE_FETCH_BASE = "https://api.frankfurter.dev";
+const RATE_FETCH_TIMEOUT_MS = 5000;
 
 function envOr(name) {
   const v = process.env[name];
@@ -144,7 +146,14 @@ configCmd
   .description(`Remove a config value (keys: ${VALID_SET_CONFIG_KEYS.join(", ")})`)
   .action(runConfigUnset);
 
-program.parse(process.argv);
+configCmd
+  .command("update")
+  .description(
+    "Fetch the latest rate from frankfurter.dev and write it to the config (use -c <code> or SCX_CURRENCY to override the target)",
+  )
+  .action(runConfigUpdate);
+
+await program.parseAsync(process.argv);
 
 function runConvert() {
   const options = program.opts();
@@ -399,4 +408,60 @@ function runConfigUnset(key) {
   const config = loadConfig() ?? {};
   delete config[key];
   writeConfig(config);
+}
+
+async function fetchRate(currency) {
+  const base = envOr("SCX_RATE_FETCH_URL") ?? RATE_FETCH_BASE;
+  const url = `${base}/v1/latest?base=USD&symbols=${encodeURIComponent(currency)}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RATE_FETCH_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": `scx/${packageJson.version}` },
+    });
+  } catch (err) {
+    process.stderr.write(`scx: rate fetch failed: ${err.message}\n`);
+    process.exit(1);
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) {
+    process.stderr.write(`scx: rate fetch returned HTTP ${response.status}\n`);
+    process.exit(1);
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch (err) {
+    process.stderr.write(`scx: invalid JSON from rate API: ${err.message}\n`);
+    process.exit(1);
+  }
+  const value = body?.rates?.[currency];
+  if (typeof value !== "number") {
+    process.stderr.write(`scx: rate for ${currency} missing from response\n`);
+    process.exit(1);
+  }
+  return value;
+}
+
+async function runConfigUpdate() {
+  const config = loadConfig() ?? {};
+  const cliCurrency = program.opts().currency;
+  const rawCurrency = cliCurrency ?? envOr("SCX_CURRENCY") ?? config.currency ?? DEFAULT_CURRENCY;
+  const currency = String(rawCurrency).toUpperCase();
+  if (!isValidCurrencyCode(currency)) {
+    process.stderr.write(`scx: invalid currency code: ${rawCurrency}\n`);
+    process.exit(1);
+  }
+  const value = await fetchRate(currency);
+  config.currency = currency;
+  config.rate = {
+    value,
+    currency,
+    updatedAt: new Date().toISOString(),
+  };
+  writeConfig(config);
+  process.stdout.write(`${value}\n`);
 }
