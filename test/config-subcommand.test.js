@@ -157,13 +157,16 @@ describe("scx config set", () => {
     assert.match(cfg.rate.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
   });
 
-  test("set rate errors when currency is not yet configured", () => {
+  test("set rate auto-sets currency to default when none is configured", () => {
     const xdg = makeEmptyXdg();
-    const { status, stderr } = runScx(["config", "set", "rate", "155"], "", {
+    const { status } = runScx(["config", "set", "rate", "155"], "", {
       env: { XDG_CONFIG_HOME: xdg },
     });
-    assert.equal(status, 1);
-    assert.match(stderr, /currency/i);
+    assert.equal(status, 0);
+    const cfg = readXdgConfig(xdg);
+    assert.equal(cfg.currency, "JPY");
+    assert.equal(cfg.rate.value, 155);
+    assert.equal(cfg.rate.currency, "JPY");
   });
 
   test("set rate rejects non-positive value", () => {

@@ -382,10 +382,7 @@ function runConfigSet(key, value) {
       process.exit(1);
     }
     if (!config.currency) {
-      process.stderr.write(
-        "scx: cannot set rate before currency. Run `scx config set currency <code>` first.\n",
-      );
-      process.exit(1);
+      config.currency = DEFAULT_CURRENCY;
     }
     config.rate = {
       value: num,
