@@ -143,6 +143,11 @@ Examples:
   );
 
 configCmd
+  .command("update")
+  .description("Fetch the latest USD->target rate from frankfurter.dev")
+  .action(runConfigUpdate);
+
+configCmd
   .command("show")
   .description("Show resolved settings with their source")
   .action(runConfigShow);
@@ -163,11 +168,6 @@ configCmd
   .action(runConfigUnset);
 
 configCmd.command("delete").description("Delete the config file entirely").action(runConfigDelete);
-
-configCmd
-  .command("update")
-  .description("Fetch the latest USD->target rate from frankfurter.dev")
-  .action(runConfigUpdate);
 
 await program.parseAsync(process.argv);
 
