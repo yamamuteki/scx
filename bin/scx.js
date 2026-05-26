@@ -73,7 +73,7 @@ const rawCurrency = options.currency ?? envOr("SCX_CURRENCY") ?? DEFAULT_CURRENC
 const rawLocale = options.locale ?? envOr("SCX_LOCALE") ?? DEFAULT_LOCALE;
 
 if (rawRate === undefined) {
-  process.stderr.write("scx: rate is required. Pass -r <number> or set SCX_RATE.\n");
+  process.stderr.write("scx: rate is required. Use -r <number> or set SCX_RATE.\n");
   process.exit(1);
 }
 
