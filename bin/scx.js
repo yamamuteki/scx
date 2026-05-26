@@ -126,7 +126,21 @@ Examples:
   )
   .action(runConvert);
 
-const configCmd = program.command("config").description("Manage the scx config file");
+const configCmd = program
+  .command("config")
+  .description("Manage the scx config file")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ scx config update                # fetch USD->JPY (or your config currency)
+  $ scx config update -c EUR         # fetch USD->EUR (makes EUR the default currency)
+  $ scx config show                  # see current settings + source
+  $ scx config set currency JPY      # write a key
+  $ scx config set rate 155          # write rate manually (no network)
+  $ scx config unset rate            # remove a key
+  $ scx config delete                # remove the entire config file`,
+  );
 
 configCmd
   .command("show")
@@ -152,9 +166,7 @@ configCmd.command("delete").description("Delete the config file entirely").actio
 
 configCmd
   .command("update")
-  .description(
-    "Fetch the latest rate from frankfurter.dev and write it to the config (use -c <code> or SCX_CURRENCY to override the target)",
-  )
+  .description("Fetch the latest USD->target rate from frankfurter.dev")
   .action(runConfigUpdate);
 
 await program.parseAsync(process.argv);
