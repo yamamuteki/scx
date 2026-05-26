@@ -45,10 +45,12 @@ describe("--version / --help", () => {
 });
 
 describe("argument validation", () => {
-  test("exits 1 when --rate is missing", () => {
-    const { status, stderr } = runScx([], "Total: $1.00");
+  test("exits 1 when rate is not provided anywhere", () => {
+    const { status, stderr } = runScx([], "Total: $1.00", {
+      env: { SCX_RATE: "" },
+    });
     assert.equal(status, 1);
-    assert.match(stderr, /--rate/);
+    assert.match(stderr, /rate is required/);
   });
 
   test("exits 1 when --rate is not numeric", () => {
