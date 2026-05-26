@@ -116,11 +116,13 @@ program
     "after",
     `
 Examples:
-  $ echo 'Total: $12.34' | scx -c JPY -r 155
-  $ ccusage | scx -c JPY -r 155
-  $ ccusage | scx -c EUR -r 0.92 -l de-DE
-  $ ccusage daily --json | scx -c JPY -r 155              # JSON auto-detected
-  $ ccusage daily --json | scx -c JPY -r 155 --json-cost-string`,
+  $ scx config update                              # one-time setup
+  $ scx config show                                # see your settings
+  $ echo 'Total: $1.00' | scx                      # quick test
+  $ ccusage | scx                                  # main use case (uses config)
+  $ ccusage | scx -c EUR -r 0.92 -l de-DE          # ad-hoc with all flags
+  $ ccusage daily --json | scx                     # JSON mode (auto-detected)
+  $ ccusage daily --json | scx --json-cost-string  # JSON, costs as formatted strings`,
   )
   .action(runConvert);
 
