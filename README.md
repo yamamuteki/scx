@@ -36,7 +36,7 @@ scx -c <currency> -r <rate> [-l <locale>]
 | Option | Description | Default |
 |---|---|---|
 | `-c, --currency <code>` | ISO 4217 currency code to convert to (e.g. `JPY`, `EUR`, `VND`, `KRW`) | `JPY` |
-| `-r, --rate <number>` | Exchange rate from USD to the target currency. **Required.** | — |
+| `-r, --rate <number>` | Exchange rate from USD to the target currency. Required unless `SCX_RATE` is set. | — |
 | `-l, --locale <locale>` | BCP 47 locale used by `Intl.NumberFormat` (e.g. `en-US`, `ja-JP`, `de-DE`, `vi-VN`) | `en-US` |
 | `--json` | Treat stdin as a JSON document and convert cost fields in place. Parse errors exit with status 1 | off |
 | `--json-key <key>` | Extra key name(s) to treat as USD cost. Repeatable or comma-separated. | — |
@@ -44,6 +44,21 @@ scx -c <currency> -r <rate> [-l <locale>]
 | `--no-auto-json` | Disable JSON input auto-detection; always run in text mode | auto on |
 | `-h, --help` | Show help | — |
 | `-V, --version` | Show version | — |
+
+## Environment variables
+
+The three core options can also be supplied through environment variables. CLI flags take precedence.
+
+| Variable | Equivalent option | Description |
+|---|---|---|
+| `SCX_CURRENCY` | `-c, --currency` | Target currency code. |
+| `SCX_RATE` | `-r, --rate` | Exchange rate from USD to the target currency. |
+| `SCX_LOCALE` | `-l, --locale` | BCP 47 locale for number formatting. |
+
+```bash
+export SCX_CURRENCY=JPY SCX_RATE=155
+ccusage | scx
+```
 
 ## Examples
 

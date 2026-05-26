@@ -9,7 +9,14 @@ const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, "..", "package.json");
 const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
+const DEFAULT_CURRENCY = "JPY";
+const DEFAULT_LOCALE = "en-US";
 const DEFAULT_JSON_COST_KEYS = ["totalCost", "costUSD", "cost", "costPerHour"];
+
+function envOr(name) {
+  const v = process.env[name];
+  return v == null || v === "" ? undefined : v;
+}
 
 function collectJsonKeys(value, previous) {
   const additions = value
@@ -25,9 +32,15 @@ program
   .name("scx")
   .description("Simple Currency eXchanger for stdin streams")
   .version(packageJson.version)
-  .option("-c, --currency <code>", "target currency code", "JPY")
-  .requiredOption("-r, --rate <number>", "exchange rate from USD to target currency")
-  .option("-l, --locale <locale>", "locale for currency formatting", "en-US")
+  .option(
+    "-c, --currency <code>",
+    `target currency code (default: ${DEFAULT_CURRENCY}, env: SCX_CURRENCY)`,
+  )
+  .option("-r, --rate <number>", "exchange rate from USD to target currency (env: SCX_RATE)")
+  .option(
+    "-l, --locale <locale>",
+    `locale for currency formatting (default: ${DEFAULT_LOCALE}, env: SCX_LOCALE)`,
+  )
   .option("--json", "treat stdin as JSON and convert cost fields recursively", false)
   .option(
     "--json-key <key>",
@@ -55,30 +68,39 @@ Examples:
 
 const options = program.opts();
 
-const rate = Number(options.rate);
-if (!Number.isFinite(rate) || rate <= 0) {
-  process.stderr.write(`scx: invalid rate: ${options.rate}\n`);
+const rawRate = options.rate ?? envOr("SCX_RATE");
+const rawCurrency = options.currency ?? envOr("SCX_CURRENCY") ?? DEFAULT_CURRENCY;
+const rawLocale = options.locale ?? envOr("SCX_LOCALE") ?? DEFAULT_LOCALE;
+
+if (rawRate === undefined) {
+  process.stderr.write("scx: rate is required. Pass -r <number> or set SCX_RATE.\n");
   process.exit(1);
 }
 
-const currency = String(options.currency).toUpperCase();
+const rate = Number(rawRate);
+if (!Number.isFinite(rate) || rate <= 0) {
+  process.stderr.write(`scx: invalid rate: ${rawRate}\n`);
+  process.exit(1);
+}
+
+const currency = String(rawCurrency).toUpperCase();
 if (
   typeof Intl.supportedValuesOf === "function" &&
   !Intl.supportedValuesOf("currency").includes(currency)
 ) {
-  process.stderr.write(`scx: invalid currency code: ${options.currency}\n`);
+  process.stderr.write(`scx: invalid currency code: ${rawCurrency}\n`);
   process.exit(1);
 }
 
 let formatter;
 try {
-  formatter = new Intl.NumberFormat(options.locale, {
+  formatter = new Intl.NumberFormat(rawLocale, {
     style: "currency",
     currency,
   });
 } catch (err) {
   process.stderr.write(
-    `scx: invalid currency or locale (${options.currency}, ${options.locale}): ${err.message}\n`,
+    `scx: invalid currency or locale (${rawCurrency}, ${rawLocale}): ${err.message}\n`,
   );
   process.exit(1);
 }
