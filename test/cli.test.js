@@ -110,3 +110,24 @@ describe("TTY stdin guard", () => {
     assert.match(stdout, /¥155/);
   });
 });
+
+describe("unknown command handling", () => {
+  test("an unknown root token shows a helpful error, not 'too many arguments'", () => {
+    const { status, stderr } = runScx(["conf"]);
+    assert.equal(status, 1);
+    assert.doesNotMatch(stderr, /too many arguments/i);
+    assert.match(stderr, /unknown command 'conf'/);
+    assert.match(stderr, /Did you mean 'config'/);
+    assert.match(stderr, /Available commands:/);
+    assert.match(stderr, /config/);
+  });
+
+  test("a root token with no close match still lists available commands", () => {
+    const { status, stderr } = runScx(["bogus"]);
+    assert.equal(status, 1);
+    assert.doesNotMatch(stderr, /too many arguments/i);
+    assert.match(stderr, /unknown command 'bogus'/);
+    assert.match(stderr, /Available commands:/);
+    assert.match(stderr, /config/);
+  });
+});

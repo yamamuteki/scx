@@ -349,3 +349,23 @@ describe("default conversion still works (no subcommand)", () => {
     assert.match(stdout, /¥155/);
   });
 });
+
+describe("config unknown subcommand handling", () => {
+  test("an unknown config subcommand shows a helpful error, not 'too many arguments'", () => {
+    const { status, stderr } = runScx(["config", "up"]);
+    assert.equal(status, 1);
+    assert.doesNotMatch(stderr, /too many arguments/i);
+    assert.match(stderr, /unknown command 'up'/);
+    assert.match(stderr, /Did you mean 'update'/);
+    assert.match(stderr, /Available commands:/);
+    assert.match(stderr, /show/);
+    assert.match(stderr, /delete/);
+  });
+
+  test("bare 'config' still shows help", () => {
+    const { status, stdout } = runScx(["config"]);
+    assert.equal(status, 1);
+    assert.match(stdout, /Usage: scx config/);
+    assert.match(stdout, /Commands:/);
+  });
+});

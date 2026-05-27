@@ -124,6 +124,7 @@ Examples:
   $ ccusage daily --json | scx                     # JSON mode (auto-detected)
   $ ccusage daily --json | scx --json-cost-string  # JSON, costs as formatted strings`,
   )
+  .allowExcessArguments()
   .action(runConvert);
 
 const configCmd = program
@@ -141,11 +142,17 @@ Examples:
   $ scx config set rate 155          # write rate manually (no network)
   $ scx config unset rate            # remove a key
   $ scx config delete                # remove the entire config file`,
-  );
+  )
+  .allowExcessArguments()
+  .action(runConfigRoot);
 
 const updateCmd = configCmd
   .command("update")
   .description("Fetch the latest USD->target rate from frankfurter.dev")
+  // Accept stray tokens (e.g. a typo'd subcommand) so they reach the action and
+  // get a helpful error instead of commander's terse "too many arguments".
+  // Known subcommands like list are still dispatched before the action runs.
+  .allowExcessArguments()
   .action(runConfigUpdate);
 
 updateCmd
@@ -177,7 +184,33 @@ configCmd.command("delete").description("Delete the config file entirely").actio
 
 await program.parseAsync(process.argv);
 
+// Print a helpful error for an unknown command/subcommand: echo the bad token,
+// suggest a close match (by prefix), and list what is actually available.
+function rejectUnknownCommand(command, token, footer) {
+  const subs = command.commands.filter((c) => c.name() !== "help");
+  const names = subs.map((c) => c.name());
+  const lower = token.toLowerCase();
+  const guesses = names.filter((n) => n.startsWith(lower) || lower.startsWith(n));
+  const width = Math.max(...names.map((n) => n.length));
+  const lines = [`error: unknown command '${token}'`];
+  if (guesses.length > 0) {
+    lines.push(`(Did you mean ${guesses.map((g) => `'${g}'`).join(" or ")}?)`);
+  }
+  lines.push("", "Available commands:");
+  for (const c of subs) {
+    lines.push(`  ${c.name().padEnd(width)}  ${c.description()}`);
+  }
+  if (footer) {
+    lines.push("", footer);
+  }
+  process.stderr.write(`${lines.join("\n")}\n`);
+  process.exit(1);
+}
+
 function runConvert() {
+  if (program.args.length > 0) {
+    rejectUnknownCommand(program, program.args[0]);
+  }
   const options = program.opts();
   const config = loadConfig();
 
@@ -347,6 +380,14 @@ function runConvert() {
   });
 }
 
+function runConfigRoot(_options, command) {
+  if (command.args.length > 0) {
+    rejectUnknownCommand(command, command.args[0]);
+  }
+  command.outputHelp();
+  process.exit(1);
+}
+
 function runConfigShow() {
   const config = loadConfig() ?? {};
 
@@ -499,7 +540,18 @@ async function fetchRate(currency) {
   return value;
 }
 
-async function runConfigUpdate() {
+async function runConfigUpdate(_options, command) {
+  if (command.args.length > 0) {
+    rejectUnknownCommand(
+      command,
+      command.args[0],
+      "Examples:\n" +
+        "  $ scx config update                # fetch the rate for your configured currency\n" +
+        "  $ scx config update -c EUR         # fetch the rate for another currency\n" +
+        "  $ scx config update list           # list the currencies you can fetch",
+    );
+  }
+
   const config = loadConfig() ?? {};
   const cliCurrency = program.opts().currency;
   const rawCurrency = cliCurrency ?? envOr("SCX_CURRENCY") ?? config.currency ?? DEFAULT_CURRENCY;

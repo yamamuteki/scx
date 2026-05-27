@@ -285,6 +285,32 @@ describe("scx config update", () => {
     }
   });
 
+  test("an unknown update subcommand shows a helpful error, not 'too many arguments'", async () => {
+    const xdg = makeEmptyXdg();
+    const { status, stderr } = await runScxAsync(["config", "update", "lis"], "", {
+      env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: "http://127.0.0.1:1" },
+    });
+    assert.equal(status, 1);
+    assert.doesNotMatch(stderr, /too many arguments/i);
+    assert.match(stderr, /unknown command 'lis'/);
+    assert.match(stderr, /list/);
+    assert.throws(() => readXdgConfig(xdg));
+  });
+
+  test("an unknown update arg explains both the configured-currency and -c forms", async () => {
+    const xdg = makeEmptyXdg();
+    const { status, stderr } = await runScxAsync(["config", "update", "EUR", "extra"], "", {
+      env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: "http://127.0.0.1:1" },
+    });
+    assert.equal(status, 1);
+    assert.doesNotMatch(stderr, /too many arguments/i);
+    assert.match(stderr, /unknown command 'EUR'/);
+    assert.match(stderr, /Examples:/);
+    assert.match(stderr, /scx config update\b.*configured currency/);
+    assert.match(stderr, /scx config update -c\b.*another currency/);
+    assert.match(stderr, /scx config update list\b.*currenc/i);
+  });
+
   test("config update list does not write the config", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
