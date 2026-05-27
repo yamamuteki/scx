@@ -213,6 +213,7 @@ describe("scx config update", () => {
     });
     assert.equal(status, 1);
     assert.match(stderr, /invalid currency/i);
+    assert.match(stderr, /frankfurter\.dev\/v2\/currencies/);
   });
 
   test("fetches a currency v1 never served (VND) via the v2 path", async () => {
