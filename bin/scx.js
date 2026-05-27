@@ -16,7 +16,6 @@ const DEFAULT_JSON_COST_KEYS = ["totalCost", "costUSD", "cost", "costPerHour"];
 const VALID_SET_CONFIG_KEYS = ["currency", "rate", "locale"];
 const RATE_FETCH_BASE = "https://api.frankfurter.dev";
 const RATE_FETCH_TIMEOUT_MS = 5000;
-const CURRENCIES_URL = "https://api.frankfurter.dev/v2/currencies";
 
 function envOr(name) {
   const v = process.env[name];
@@ -143,10 +142,15 @@ Examples:
   $ scx config delete                # remove the entire config file`,
   );
 
-configCmd
+const updateCmd = configCmd
   .command("update")
   .description("Fetch the latest USD->target rate from frankfurter.dev")
   .action(runConfigUpdate);
+
+updateCmd
+  .command("list")
+  .description("List the currencies config update can fetch (from frankfurter.dev)")
+  .action(runConfigUpdateList);
 
 configCmd
   .command("show")
@@ -501,7 +505,7 @@ async function runConfigUpdate() {
   const currency = String(rawCurrency).toUpperCase();
   if (!isValidCurrencyCode(currency)) {
     process.stderr.write(
-      `scx: invalid currency code: ${rawCurrency}\n  Currencies config update can fetch: ${CURRENCIES_URL}\n`,
+      `scx: invalid currency code: ${rawCurrency}\n  Run 'scx config update list' to see the currencies config update can fetch.\n`,
     );
     process.exit(1);
   }
@@ -514,4 +518,47 @@ async function runConfigUpdate() {
   };
   writeConfig(config);
   process.stdout.write(`${value}\n`);
+}
+
+async function fetchCurrencies() {
+  const base = envOr("SCX_RATE_FETCH_URL") ?? RATE_FETCH_BASE;
+  const url = `${base}/v2/currencies`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), RATE_FETCH_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": `scx/${packageJson.version}` },
+    });
+  } catch (err) {
+    process.stderr.write(`scx: currencies fetch failed: ${err.message}\n`);
+    process.exit(1);
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) {
+    process.stderr.write(`scx: currencies fetch returned HTTP ${response.status}\n`);
+    process.exit(1);
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch (err) {
+    process.stderr.write(`scx: invalid JSON from currencies API: ${err.message}\n`);
+    process.exit(1);
+  }
+  if (!Array.isArray(body)) {
+    process.stderr.write("scx: unexpected currencies response shape\n");
+    process.exit(1);
+  }
+  return body;
+}
+
+async function runConfigUpdateList() {
+  const currencies = await fetchCurrencies();
+  const lines = currencies
+    .filter((c) => c && typeof c.iso_code === "string")
+    .map((c) => `${c.iso_code}  ${c.name ?? ""}`.trimEnd());
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

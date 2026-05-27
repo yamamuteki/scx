@@ -213,7 +213,7 @@ describe("scx config update", () => {
     });
     assert.equal(status, 1);
     assert.match(stderr, /invalid currency/i);
-    assert.match(stderr, /frankfurter\.dev\/v2\/currencies/);
+    assert.match(stderr, /scx config update list/);
   });
 
   test("fetches a currency v1 never served (VND) via the v2 path", async () => {
@@ -254,6 +254,49 @@ describe("scx config update", () => {
       assert.equal(cfg.currency, "KWD");
       assert.equal(cfg.rate.currency, "KWD");
       assert.equal(cfg.rate.value, 0.307);
+    } finally {
+      await stopServer(srv);
+    }
+  });
+
+  test("config update list prints codes and names from /v2/currencies", async () => {
+    let requestUrl = "";
+    const { srv, url } = await startServer((req, res) => {
+      requestUrl = req.url;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify([
+          { iso_code: "EUR", name: "Euro", end_date: "2026-07-26" },
+          { iso_code: "JPY", name: "Japanese Yen", end_date: "2026-05-26" },
+        ]),
+      );
+    });
+    try {
+      const xdg = makeEmptyXdg();
+      const { status, stdout } = await runScxAsync(["config", "update", "list"], "", {
+        env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: url },
+      });
+      assert.equal(status, 0);
+      assert.match(requestUrl, /\/v2\/currencies$/);
+      assert.match(stdout, /EUR\s+Euro/);
+      assert.match(stdout, /JPY\s+Japanese Yen/);
+    } finally {
+      await stopServer(srv);
+    }
+  });
+
+  test("config update list does not write the config", async () => {
+    const { srv, url } = await startServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify([{ iso_code: "JPY", name: "Japanese Yen" }]));
+    });
+    try {
+      const xdg = makeEmptyXdg();
+      const { status } = await runScxAsync(["config", "update", "list"], "", {
+        env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: url },
+      });
+      assert.equal(status, 0);
+      assert.throws(() => readXdgConfig(xdg));
     } finally {
       await stopServer(srv);
     }
