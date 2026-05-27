@@ -6,6 +6,10 @@ import { join } from "node:path";
 import { describe, test } from "node:test";
 import { runScxAsync } from "./helpers.js";
 
+function apiBody(rate, quote = "JPY") {
+  return JSON.stringify({ date: "2026-05-26", base: "USD", quote, rate });
+}
+
 function startServer(handler) {
   return new Promise((resolve) => {
     const srv = createServer(handler);
@@ -42,7 +46,7 @@ describe("scx config update", () => {
   test("fetches the rate from the API and writes it to config", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ base: "USD", date: "2026-05-26", rates: { JPY: 155.23 } }));
+      res.end(apiBody(155.23));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
@@ -63,7 +67,7 @@ describe("scx config update", () => {
   test("uses the default currency when config has none", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: { JPY: 155 } }));
+      res.end(apiBody(155));
     });
     try {
       const xdg = makeEmptyXdg();
@@ -82,7 +86,7 @@ describe("scx config update", () => {
   test("-c <code> overrides currency and updates config.currency too", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: { EUR: 0.92 } }));
+      res.end(apiBody(0.92, "EUR"));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
@@ -104,15 +108,14 @@ describe("scx config update", () => {
     const { srv, url } = await startServer((req, res) => {
       requestUrl = req.url;
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: { JPY: 155 } }));
+      res.end(apiBody(155));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
       await runScxAsync(["config", "update"], "", {
         env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: url },
       });
-      assert.match(requestUrl, /base=USD/);
-      assert.match(requestUrl, /symbols=JPY/);
+      assert.match(requestUrl, /\/v2\/rate\/USD\/JPY$/);
     } finally {
       await stopServer(srv);
     }
@@ -123,7 +126,7 @@ describe("scx config update", () => {
     const { srv, url } = await startServer((req, res) => {
       userAgent = req.headers["user-agent"] || "";
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: { JPY: 155 } }));
+      res.end(apiBody(155));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
@@ -156,7 +159,7 @@ describe("scx config update", () => {
   test("missing rate for the requested currency exits 1", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: {} }));
+      res.end(JSON.stringify({ date: "2026-05-26", base: "USD", quote: "JPY" }));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
@@ -190,7 +193,7 @@ describe("scx config update", () => {
   test("does not read stdin", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ rates: { JPY: 155 } }));
+      res.end(apiBody(155));
     });
     try {
       const xdg = makeXdgConfigHome({ currency: "JPY" });
@@ -210,5 +213,49 @@ describe("scx config update", () => {
     });
     assert.equal(status, 1);
     assert.match(stderr, /invalid currency/i);
+    assert.match(stderr, /frankfurter\.dev\/v2\/currencies/);
+  });
+
+  test("fetches a currency v1 never served (VND) via the v2 path", async () => {
+    let requestUrl = "";
+    const { srv, url } = await startServer((req, res) => {
+      requestUrl = req.url;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(apiBody(25400, "VND"));
+    });
+    try {
+      const xdg = makeXdgConfigHome({ currency: "JPY" });
+      const { status } = await runScxAsync(["config", "update", "-c", "VND"], "", {
+        env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: url },
+      });
+      assert.equal(status, 0);
+      assert.match(requestUrl, /\/v2\/rate\/USD\/VND$/);
+      const cfg = readXdgConfig(xdg);
+      assert.equal(cfg.currency, "VND");
+      assert.equal(cfg.rate.currency, "VND");
+      assert.equal(cfg.rate.value, 25400);
+    } finally {
+      await stopServer(srv);
+    }
+  });
+
+  test("fetches another v2-only currency (KWD)", async () => {
+    const { srv, url } = await startServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(apiBody(0.307, "KWD"));
+    });
+    try {
+      const xdg = makeEmptyXdg();
+      const { status } = await runScxAsync(["config", "update", "-c", "KWD"], "", {
+        env: { XDG_CONFIG_HOME: xdg, SCX_RATE_FETCH_URL: url },
+      });
+      assert.equal(status, 0);
+      const cfg = readXdgConfig(xdg);
+      assert.equal(cfg.currency, "KWD");
+      assert.equal(cfg.rate.currency, "KWD");
+      assert.equal(cfg.rate.value, 0.307);
+    } finally {
+      await stopServer(srv);
+    }
   });
 });
