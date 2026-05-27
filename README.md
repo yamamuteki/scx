@@ -111,7 +111,7 @@ All fields are optional. `rate.currency` records the target currency the rate co
 ### Managing the config file
 
 ```bash
-scx config update                   # fetch the latest rate (see "Fetching the rate automatically")
+scx config update                   # fetch the latest rate (see "Automatic rate update")
 scx config update -c EUR            # fetch for a different currency (and switch to it)
 scx config show                     # show resolved settings with their source
 scx config path                     # print the config file path
@@ -124,7 +124,9 @@ scx config delete                   # delete the config file entirely
 
 `scx config set rate <number>` stores `rate` as the structured `{ value, currency, updatedAt }` object using the already-configured `currency` (or the built-in default `JPY` when none is set). Values are validated before writing — `currency` must be a known ISO 4217 code, `rate` must be a positive number, and `locale` must be a recognized BCP 47 tag.
 
-### Fetching the rate automatically
+### Automatic rate update
+
+Refresh the exchange rate with a single command — no manual lookup.
 
 ```bash
 scx config update                   # fetch USD->JPY (or your config currency) from frankfurter.dev
@@ -132,6 +134,25 @@ scx config update -c EUR            # fetch USD->EUR (also makes EUR the default
 ```
 
 The rate comes from [Frankfurter](https://frankfurter.dev/), a free public API that tracks European Central Bank reference rates. No API key needed. The fetched value is written to the config in exactly the same shape as `scx config set rate <number>`, with `updatedAt` reflecting when the fetch happened. Network failures, HTTP errors, and timeouts (5 s) exit with status 1; the stale config is left untouched. Override the target currency with `-c <code>` or `SCX_CURRENCY`.
+
+#### Auto-updatable currencies
+
+`scx config update` can only fetch the currencies Frankfurter publishes — the ones tracked by the European Central Bank:
+
+| Code | Currency | Code | Currency | Code | Currency |
+|---|---|---|---|---|---|
+| AUD | Australian Dollar | HUF | Hungarian Forint | NZD | New Zealand Dollar |
+| BRL | Brazilian Real | IDR | Indonesian Rupiah | PHP | Philippine Peso |
+| CAD | Canadian Dollar | ILS | Israeli New Shekel | PLN | Polish Złoty |
+| CHF | Swiss Franc | INR | Indian Rupee | RON | Romanian Leu |
+| CNY | Chinese Renminbi Yuan | ISK | Icelandic Króna | SEK | Swedish Krona |
+| CZK | Czech Koruna | JPY | Japanese Yen | SGD | Singapore Dollar |
+| DKK | Danish Krone | KRW | South Korean Won | THB | Thai Baht |
+| EUR | Euro | MXN | Mexican Peso | TRY | Turkish Lira |
+| GBP | British Pound | MYR | Malaysian Ringgit | ZAR | South African Rand |
+| HKD | Hong Kong Dollar | NOK | Norwegian Krone | | |
+
+Currencies outside this list (e.g. `VND`) are supported too — supply the rate yourself: pass `-c <code> -r <number>` per run, or run `scx config set currency <code>` then `scx config set rate <number>`.
 
 ## Examples
 
