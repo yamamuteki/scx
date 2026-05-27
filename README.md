@@ -133,26 +133,13 @@ scx config update                   # fetch USD->JPY (or your config currency) f
 scx config update -c EUR            # fetch USD->EUR (also makes EUR the default currency)
 ```
 
-The rate comes from [Frankfurter](https://frankfurter.dev/), a free public API that tracks European Central Bank reference rates. No API key needed. The fetched value is written to the config in exactly the same shape as `scx config set rate <number>`, with `updatedAt` reflecting when the fetch happened. Network failures, HTTP errors, and timeouts (5 s) exit with status 1; the stale config is left untouched. Override the target currency with `-c <code>` or `SCX_CURRENCY`.
+The rate comes from [Frankfurter](https://frankfurter.dev/), a free public API that aggregates daily reference rates from central banks worldwide. No API key needed. The fetched value is written to the config in exactly the same shape as `scx config set rate <number>`, with `updatedAt` reflecting when the fetch happened. Network failures, HTTP errors, and timeouts (5 s) exit with status 1; the stale config is left untouched. Override the target currency with `-c <code>` or `SCX_CURRENCY`.
 
 #### Auto-updatable currencies
 
-`scx config update` can only fetch the currencies Frankfurter publishes — the ones tracked by the European Central Bank:
+`scx config update` works for any currency Frankfurter serves — most ISO 4217 codes (`JPY`, `EUR`, `GBP`, `VND`, `KWD`, … ~170 in total). For the complete, authoritative list see [`api.frankfurter.dev/v2/currencies`](https://api.frankfurter.dev/v2/currencies) (JSON).
 
-| Code | Currency | Code | Currency | Code | Currency |
-|---|---|---|---|---|---|
-| AUD | Australian Dollar | HUF | Hungarian Forint | NZD | New Zealand Dollar |
-| BRL | Brazilian Real | IDR | Indonesian Rupiah | PHP | Philippine Peso |
-| CAD | Canadian Dollar | ILS | Israeli New Shekel | PLN | Polish Złoty |
-| CHF | Swiss Franc | INR | Indian Rupee | RON | Romanian Leu |
-| CNY | Chinese Renminbi Yuan | ISK | Icelandic Króna | SEK | Swedish Krona |
-| CZK | Czech Koruna | JPY | Japanese Yen | SGD | Singapore Dollar |
-| DKK | Danish Krone | KRW | South Korean Won | THB | Thai Baht |
-| EUR | Euro | MXN | Mexican Peso | TRY | Turkish Lira |
-| GBP | British Pound | MYR | Malaysian Ringgit | ZAR | South African Rand |
-| HKD | Hong Kong Dollar | NOK | Norwegian Krone | | |
-
-Currencies outside this list (e.g. `VND`) are supported too — supply the rate yourself: pass `-c <code> -r <number>` per run, or run `scx config set currency <code>` then `scx config set rate <number>`.
+If a currency isn't served, `config update` exits with an error — supply the rate yourself with `-c <code> -r <number>` per run, or `scx config set currency <code>` then `scx config set rate <number>`.
 
 ## Examples
 
