@@ -15,17 +15,15 @@
 // Requirements: ffmpeg in PATH, Google Chrome installed (used via
 // channel: "chrome" so Chromium download is unnecessary).
 
-import { chromium } from "playwright";
+import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import fs from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const demoArg = process.argv[2];
-const demoPath = demoArg
-  ? path.resolve(demoArg)
-  : path.join(__dirname, "demo.html");
+const demoPath = demoArg ? path.resolve(demoArg) : path.join(__dirname, "demo.html");
 const outDir = path.dirname(demoPath);
 const framesDir = path.join(outDir, "frames");
 const gifPath = path.join(outDir, "demo.gif");
@@ -56,7 +54,7 @@ client.on("Page.screencastFrame", async ({ data, sessionId }) => {
 });
 
 console.log("Capturing frames…");
-await page.goto("file://" + demoPath);
+await page.goto(`file://${demoPath}`);
 await page.waitForFunction(() => window.__demoStarted, { timeout: 10_000 });
 await client.send("Page.startScreencast", {
   format: "png",
@@ -77,18 +75,19 @@ await new Promise((resolve, reject) => {
     "ffmpeg",
     [
       "-y",
-      "-framerate", "34",
-      "-i", path.join(framesDir, "f%05d.png"),
+      "-framerate",
+      "34",
+      "-i",
+      path.join(framesDir, "f%05d.png"),
       "-vf",
       "fps=12,split[s0][s1];[s0]palettegen=stats_mode=full:max_colors=128:reserve_transparent=0[p];[s1][p]paletteuse=dither=none:diff_mode=rectangle:new=0",
-      "-loop", "0",
+      "-loop",
+      "0",
       gifPath,
     ],
-    { stdio: ["ignore", "ignore", "inherit"] }
+    { stdio: ["ignore", "ignore", "inherit"] },
   );
-  ff.on("close", (code) =>
-    code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}`))
-  );
+  ff.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}`))));
   ff.on("error", reject);
 });
 
