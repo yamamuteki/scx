@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>scx demo</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --bg-dark: #181825;
+    --border: #313244;
+    --fg: #cdd6f4;
+    --dim: #7f849c;
+    --prompt: #a6e3a1;
+    --command: #cdd6f4;
+    --usd: #f9e2af;
+    --jpy: #a6e3a1;
+    --eur: #89b4fa;
+    --accent: #cba6f7;
+    --muted: #6c7086;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0b0b12;
+    color: var(--fg);
+    font-family: ui-monospace, "SF Mono", "Menlo", "Consolas",
+                 "Apple Color Emoji", "Segoe UI Emoji", monospace;
+    font-feature-settings: "calt" 0;
+  }
+  body {
+    width: 800px;
+    height: 450px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .terminal {
+    position: relative;
+    width: 800px;
+    height: 450px;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .titlebar {
+    height: 28px;
+    background: var(--bg-dark);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 8px;
+    flex: 0 0 28px;
+  }
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .dot.red    { background: #f38ba8; }
+  .dot.yellow { background: #f9e2af; }
+  .dot.green  { background: #a6e3a1; }
+  .title {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .screen {
+    flex: 1;
+    padding: 10px 16px 12px;
+    font-size: 13px;
+    line-height: 1.37;
+    overflow: hidden;
+    white-space: pre;
+    font-variant-ligatures: none;
+  }
+  .row { display: block; min-height: 1.37em; }
+  .row.fade-in { animation: fadeIn 220ms ease-out both; }
+  .prompt { color: var(--prompt); }
+  .cmd    { color: var(--command); }
+  .usd    { color: var(--usd); }
+  .jpy    { color: var(--jpy); }
+  .eur    { color: var(--eur); }
+  .dim    { color: var(--dim); }
+  .accent { color: var(--accent); }
+  .muted  { color: var(--muted); }
+
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    background: var(--fg);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s steps(2, end) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+  @keyframes flash {
+    0%, 100% { background: transparent; }
+    30% { background: rgba(166, 227, 161, 0.18); }
+  }
+  .flash { animation: flash 900ms ease-in-out; }
+
+  .statusline {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: var(--fg);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 240ms ease-out, transform 240ms ease-out;
+  }
+  .statusline.show { opacity: 1; transform: none; }
+  .statusline .label {
+    color: var(--muted);
+    font-size: 10.5px;
+    letter-spacing: 0.6px;
+    margin-bottom: 2px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <div class="terminal">
+    <div class="screen" id="screen"></div>
+  </div>
+
+<script>
+"use strict";
+
+const screen = document.getElementById("screen");
+
+// --- helpers ---------------------------------------------------------------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function row(html = "", className = "") {
+  const div = document.createElement("div");
+  div.className = `row${className ? ` ${className}` : ""}`;
+  div.innerHTML = html;
+  screen.appendChild(div);
+  // terminal-like behaviour: keep latest line at the bottom of the viewport
+  screen.scrollTop = screen.scrollHeight;
+  return div;
+}
+
+function setCursor(el, on = true) {
+  // ensure exactly one trailing cursor
+  for (const c of el.querySelectorAll(".cursor")) c.remove();
+  if (on) {
+    const c = document.createElement("span");
+    c.className = "cursor";
+    el.appendChild(c);
+  }
+}
+
+async function typeInto(el, text, speed = 35) {
+  setCursor(el, true);
+  const cursor = el.querySelector(".cursor");
+  for (const ch of text) {
+    const span = document.createElement("span");
+    span.className = "cmd";
+    span.textContent = ch;
+    el.insertBefore(span, cursor);
+    await sleep(speed);
+  }
+}
+
+function promptLine() {
+  const r = row(`<span class="prompt">$</span> `);
+  setCursor(r, true);
+  return r;
+}
+
+async function printBlock(lines, perLineDelay = 35, className = "") {
+  for (const line of lines) {
+    row(line, `fade-in ${className}`);
+    await sleep(perLineDelay);
+  }
+}
+
+// --- tables ----------------------------------------------------------------
+const usdTable = [
+  '<span class="dim">┌────────────┬─────┬────────────┐</span>',
+  '<span class="dim">│</span> Date       <span class="dim">│</span> ... <span class="dim">│</span> Cost (USD) <span class="dim">│</span>',
+  '<span class="dim">├────────────┼─────┼────────────┤</span>',
+  '<span class="dim">│</span> 2026-05-28 <span class="dim">│</span> ... <span class="dim">│</span>     <span class="usd">$30.00</span> <span class="dim">│</span>',
+  '<span class="dim">├────────────┼─────┼────────────┤</span>',
+  '<span class="dim">│</span> Total      <span class="dim">│</span> ... <span class="dim">│</span>     <span class="usd">$30.00</span> <span class="dim">│</span>',
+  '<span class="dim">└────────────┴─────┴────────────┘</span>',
+];
+const jpyTable = [
+  '<span class="dim">┌────────────┬─────┬────────────┐</span>',
+  '<span class="dim">│</span> Date       <span class="dim">│</span> ... <span class="dim">│</span> Cost (USD) <span class="dim">│</span>',
+  '<span class="dim">├────────────┼─────┼────────────┤</span>',
+  '<span class="dim">│</span> 2026-05-28 <span class="dim">│</span> ... <span class="dim">│</span>     <span class="jpy">¥4,650</span> <span class="dim">│</span>',
+  '<span class="dim">├────────────┼─────┼────────────┤</span>',
+  '<span class="dim">│</span> Total      <span class="dim">│</span> ... <span class="dim">│</span>     <span class="jpy">¥4,650</span> <span class="dim">│</span>',
+  '<span class="dim">└────────────┴─────┴────────────┘</span>',
+];
+
+const usdStatus = '🤖 Opus | 💰 <span class="usd">$5.00</span> session / <span class="usd">$8.14</span> today / <span class="usd">$8.14</span> block (3h 21m left) | 🔥 <span class="usd">$9.84</span>/hr | 🧠 N/A';
+const jpyStatus = '🤖 Opus | 💰 <span class="jpy">¥775</span> session / <span class="jpy">¥1,262</span> today / <span class="jpy">¥1,262</span> block (3h 21m left) | 🔥 <span class="jpy">¥1,525</span>/hr | 🧠 N/A';
+// EUR at ~0.93 USD/EUR (Frankfurter typical reference)
+const eurStatus = '🤖 Opus | 💰 <span class="eur">€4.65</span> session / <span class="eur">€7.57</span> today / <span class="eur">€7.57</span> block (3h 21m left) | 🔥 <span class="eur">€9.15</span>/hr | 🧠 N/A';
+
+// --- scenes ----------------------------------------------------------------
+// No screen clears between scenes: the terminal scrolls naturally.
+
+const currencyList = [
+  "AED  UAE Dirham",
+  "AFN  Afghani",
+  "ALL  Lek",
+  "AMD  Armenian Dram",
+  "ANG  Netherlands Antillean Guilder",
+  "AOA  Kwanza",
+  "ARS  Argentine Peso",
+  "AUD  Australian Dollar",
+  "AWG  Aruban Florin",
+  "AZN  Azerbaijani Manat",
+  "BAM  Convertible Mark",
+  "BBD  Barbadian Dollar",
+  "BDT  Taka",
+  "BGN  Bulgarian Lev",
+  "BHD  Bahraini Dinar",
+  "BIF  Burundian Franc",
+  "BMD  Bermudian Dollar",
+  "BND  Brunei Dollar",
+  "BOB  Boliviano",
+  "BOV  Mvdol",
+  "BRL  Brazilian Real",
+  "BSD  Bahamian Dollar",
+  "BTN  Ngultrum",
+  "BWP  Pula",
+  "BYN  Belarusian Ruble",
+  "BZD  Belize Dollar",
+  "CAD  Canadian Dollar",
+  "CDF  Congolese Franc",
+  "CHE  WIR Euro",
+  "CHF  Swiss Franc",
+  "CHW  WIR Franc",
+  "CLF  Unidad de Fomento",
+  "CLP  Chilean Peso",
+  "CNY  Yuan Renminbi",
+  "COP  Colombian Peso",
+  "COU  Unidad de Valor Real",
+  "CRC  Costa Rican Colon",
+  "CUC  Peso Convertible",
+  "CUP  Cuban Peso",
+  "CVE  Cabo Verde Escudo",
+  "CZK  Czech Koruna",
+  "DJF  Djibouti Franc",
+  "DKK  Danish Krone",
+  "DOP  Dominican Peso",
+  "DZD  Algerian Dinar",
+  "EGP  Egyptian Pound",
+  "ERN  Nakfa",
+  "ETB  Ethiopian Birr",
+  "EUR  Euro",
+  "FJD  Fiji Dollar",
+  "FKP  Falkland Islands Pound",
+  "GBP  Pound Sterling",
+  "GEL  Lari",
+  "GHS  Ghana Cedi",
+  "GIP  Gibraltar Pound",
+  "GMD  Dalasi",
+  "GNF  Guinean Franc",
+  "GTQ  Quetzal",
+  "GYD  Guyana Dollar",
+  "HKD  Hong Kong Dollar",
+  "HNL  Lempira",
+  "HTG  Gourde",
+  "HUF  Forint",
+  "IDR  Rupiah",
+  "ILS  New Israeli Sheqel",
+  "INR  Indian Rupee",
+  "IQD  Iraqi Dinar",
+  "IRR  Iranian Rial",
+  "ISK  Iceland Krona",
+  "JMD  Jamaican Dollar",
+  "JOD  Jordanian Dinar",
+  "JPY  Yen",
+  "KES  Kenyan Shilling",
+  "KGS  Som",
+  "KHR  Riel",
+  "KMF  Comorian Franc",
+  "KPW  North Korean Won",
+  "KRW  Won",
+  "KWD  Kuwaiti Dinar",
+  "KYD  Cayman Islands Dollar",
+  "KZT  Tenge",
+  "LAK  Lao Kip",
+  "LBP  Lebanese Pound",
+  "LKR  Sri Lanka Rupee",
+  "LRD  Liberian Dollar",
+  "LSL  Loti",
+  "LYD  Libyan Dinar",
+  "MAD  Moroccan Dirham",
+  "MDL  Moldovan Leu",
+  "MGA  Malagasy Ariary",
+  "MKD  Denar",
+  "MMK  Kyat",
+  "MNT  Tugrik",
+  "MOP  Pataca",
+  "MRU  Ouguiya",
+  "MUR  Mauritius Rupee",
+  "MVR  Rufiyaa",
+  "MWK  Malawi Kwacha",
+  "MXN  Mexican Peso",
+  "MXV  Mexican Unidad de Inversion",
+  "MYR  Malaysian Ringgit",
+  "MZN  Mozambique Metical",
+  "NAD  Namibia Dollar",
+  "NGN  Naira",
+  "NIO  Cordoba Oro",
+  "NOK  Norwegian Krone",
+  "NPR  Nepalese Rupee",
+  "NZD  New Zealand Dollar",
+  "OMR  Rial Omani",
+  "PAB  Balboa",
+  "PEN  Sol",
+  "PGK  Kina",
+  "PHP  Philippine Peso",
+  "PKR  Pakistan Rupee",
+  "PLN  Zloty",
+  "PYG  Guarani",
+  "QAR  Qatari Rial",
+  "RON  Romanian Leu",
+  "RSD  Serbian Dinar",
+  "RUB  Russian Ruble",
+  "RWF  Rwanda Franc",
+  "SAR  Saudi Riyal",
+  "SBD  Solomon Islands Dollar",
+  "SCR  Seychelles Rupee",
+  "SDG  Sudanese Pound",
+  "SEK  Swedish Krona",
+  "SGD  Singapore Dollar",
+  "SHP  Saint Helena Pound",
+  "SLE  Leone",
+  "SOS  Somali Shilling",
+  "SRD  Surinam Dollar",
+  "SSP  South Sudanese Pound",
+  "STN  Dobra",
+  "SVC  El Salvador Colon",
+  "SYP  Syrian Pound",
+  "SZL  Lilangeni",
+  "THB  Baht",
+  "TJS  Somoni",
+  "TMT  Turkmenistan Manat",
+  "TND  Tunisian Dinar",
+  "TOP  Pa'anga",
+  "TRY  Turkish Lira",
+  "TTD  Trinidad and Tobago Dollar",
+  "TWD  New Taiwan Dollar",
+  "TZS  Tanzanian Shilling",
+  "UAH  Hryvnia",
+  "UGX  Uganda Shilling",
+  "USD  US Dollar",
+  "UYI  Uruguay Peso (Indexed)",
+  "UYU  Peso Uruguayo",
+  "UYW  Unidad Previsional",
+  "UZS  Uzbekistan Sum",
+  "VES  Bolivar Soberano",
+  "VND  Dong",
+  "VUV  Vatu",
+  "WST  Tala",
+  "XAF  CFA Franc BEAC",
+  "XCD  East Caribbean Dollar",
+  "XDR  SDR (Special Drawing Right)",
+  "XOF  CFA Franc BCEAO",
+  "XPF  CFP Franc",
+  "YER  Yemeni Rial",
+  "ZAR  Rand",
+  "ZMW  Zambian Kwacha",
+  "ZWG  Zimbabwe Gold",
+];
+
+async function scene_intro() {
+  await sleep(200);
+  const p = promptLine();
+  await sleep(150);
+  await typeInto(
+    p,
+    'echo "SCX is Simple Currency eXchanger for stdin streams." > /dev/null',
+    30
+  );
+  setCursor(p, false);
+  await sleep(400);
+}
+
+async function scene_outro() {
+  await sleep(200);
+  const p1 = promptLine();
+  await sleep(100);
+  await typeInto(p1, "npx @yamamuteki/scx config update list", 30);
+  setCursor(p1, false);
+  await sleep(200);
+
+  for (const line of currencyList) {
+    // Highlight the 3-letter code in accent color
+    const formatted = line.replace(
+      /^([A-Z]{3})/,
+      '<span class="accent">$1</span>'
+    );
+    row(formatted, "fade-in");
+    await sleep(20);
+  }
+  await sleep(500);
+
+  const p2 = promptLine();
+  await sleep(100);
+  await typeInto(p2, 'echo "May your rates be ever in your favor! :)" > /dev/null', 30);
+  setCursor(p2, false);
+  await sleep(300);
+
+  const p3 = promptLine();
+  await sleep(100);
+  await typeInto(p3, "open https://github.com/yamamuteki/scx", 30);
+  // 2.5s loop-boundary breather. CDP screencast skips frames when nothing
+  // visibly changes, so nudge the cursor by 1px each tick to force frames
+  // (imperceptible visually, but enough for the recorder to capture).
+  const cursor = p3.querySelector(".cursor");
+  for (let i = 0; i < 25; i++) {
+    if (cursor) cursor.style.marginLeft = i % 2 === 0 ? "1px" : "2px";
+    await sleep(100);
+  }
+}
+
+async function scene1_ccusage() {
+  await sleep(200);
+  const p = promptLine();
+  await sleep(100);
+  await typeInto(p, "npx ccusage", 30);
+  setCursor(p, false);
+  await sleep(150);
+  await printBlock(usdTable, 50);
+  await sleep(800);
+}
+
+async function scene2_pipeScx() {
+  const p = promptLine();
+  // up-arrow recall: previous command appears instantly
+  const recall = document.createElement("span");
+  recall.className = "cmd";
+  recall.textContent = "npx ccusage";
+  p.appendChild(recall);
+  setCursor(p, true);
+  await sleep(250);
+  await typeInto(p, " | npx @yamamuteki/scx -c JPY -r 155", 30);
+  setCursor(p, false);
+  await sleep(200);
+  await printBlock(jpyTable, 50, "flash");
+  await sleep(2100);
+}
+
+// Helper: swap the content of a row in-place with a fresh fade + flash.
+function swapRow(el, html) {
+  el.classList.remove("fade-in", "flash");
+  // force reflow so the animation re-fires
+  void el.offsetWidth;
+  el.innerHTML = html;
+  el.classList.add("fade-in", "flash");
+}
+
+async function scene3_statuslineDance() {
+  await sleep(200);
+  row('<span class="muted">// ~/.claude/settings.json</span>', "fade-in");
+  await sleep(200);
+  row(
+    '<span class="muted">// "statusLine.command": "</span><span class="cmd">npx -y ccusage statusline</span> <span class="accent">| npx -y @yamamuteki/scx</span><span class="muted">"</span>',
+    "fade-in"
+  );
+  await sleep(300);
+  const statusLine = row(usdStatus, "fade-in");
+  await sleep(1700);
+
+  // config update -c JPY
+  const p1 = promptLine();
+  await sleep(100);
+  await typeInto(p1, "npx @yamamuteki/scx config update -c JPY", 30);
+  setCursor(p1, false);
+  await sleep(150);
+  row(
+    '<span class="accent">Fetched</span> USD → JPY = <span class="jpy">155.23</span> <span class="muted">(Frankfurter)</span>',
+    "fade-in"
+  );
+  await sleep(300);
+  swapRow(statusLine, jpyStatus);
+  await sleep(1500);
+
+  // config update -c EUR
+  const p2 = promptLine();
+  await sleep(100);
+  await typeInto(p2, "npx @yamamuteki/scx config update -c EUR", 30);
+  setCursor(p2, false);
+  await sleep(150);
+  row(
+    '<span class="accent">Fetched</span> USD → EUR = <span class="eur">0.93</span> <span class="muted">(Frankfurter)</span>',
+    "fade-in"
+  );
+  await sleep(300);
+  swapRow(statusLine, eurStatus);
+  await sleep(1500);
+}
+
+// --- main ------------------------------------------------------------------
+window.__cycleCount = 0;
+(async function loop() {
+  window.__demoStarted = true;
+  // Infinite loop: clear screen and replay every cycle.
+  // Recorders can wait for `__cycleCount >= 1` to capture exactly one pass.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    screen.innerHTML = "";
+    await scene_intro();
+    await scene1_ccusage();
+    await scene2_pipeScx();
+    await scene3_statuslineDance();
+    await scene_outro();
+    window.__cycleCount += 1;
+    await sleep(800);
+  }
+})();
+</script>
+</body>
+</html>

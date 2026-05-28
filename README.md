@@ -11,30 +11,30 @@ Simple Currency eXchanger for stdin streams.
 
 It is designed to wrap tools like [`ccusage`](https://www.npmjs.com/package/ccusage) so their dollar figures can be read directly in your local currency.
 
+<img src="doc/demo.gif" alt="scx demo" width="800">
+
 **Before** — `npx ccusage`:
 
 ```
-┌────────────┬───────┬────────────┬───────┬────────┬────────┬────────────┬────────┬────────────┐
-│ Date       │ Agent │ Models     │ Input │ Output │  Cache │ Cache Read │  Total │ Cost (USD) │
-│            │       │            │       │        │ Create │            │ Tokens │            │
-├────────────┼───────┼────────────┼───────┼────────┼────────┼────────────┼────────┼────────────┤
-│ 2026-05-28 │ All   │ - opus-4-7 │   ... │    ... │    ... │        ... │    ... │     $30.00 │
-├────────────┼───────┼────────────┼───────┼────────┼────────┼────────────┼────────┼────────────┤
-│ Total      │       │            │   ... │    ... │    ... │        ... │    ... │     $30.00 │
-└────────────┴───────┴────────────┴───────┴────────┴────────┴────────────┴────────┴────────────┘
+┌────────────┬─────┬────────────┐
+│ Date       │ ... │ Cost (USD) │
+├────────────┼─────┼────────────┤
+│ 2026-05-28 │ ... │     $30.00 │
+├────────────┼─────┼────────────┤
+│ Total      │ ... │     $30.00 │
+└────────────┴─────┴────────────┘
 ```
 
 **After** — `npx ccusage | npx -y @yamamuteki/scx -c JPY -r 155`:
 
 ```
-┌────────────┬───────┬────────────┬───────┬────────┬────────┬────────────┬────────┬────────────┐
-│ Date       │ Agent │ Models     │ Input │ Output │  Cache │ Cache Read │  Total │ Cost (USD) │
-│            │       │            │       │        │ Create │            │ Tokens │            │
-├────────────┼───────┼────────────┼───────┼────────┼────────┼────────────┼────────┼────────────┤
-│ 2026-05-28 │ All   │ - opus-4-7 │   ... │    ... │    ... │        ... │    ... │     ¥4,650 │
-├────────────┼───────┼────────────┼───────┼────────┼────────┼────────────┼────────┼────────────┤
-│ Total      │       │            │   ... │    ... │    ... │        ... │    ... │     ¥4,650 │
-└────────────┴───────┴────────────┴───────┴────────┴────────┴────────────┴────────┴────────────┘
+┌────────────┬─────┬────────────┐
+│ Date       │ ... │ Cost (USD) │
+├────────────┼─────┼────────────┤
+│ 2026-05-28 │ ... │     ¥4,650 │
+├────────────┼─────┼────────────┤
+│ Total      │ ... │     ¥4,650 │
+└────────────┴─────┴────────────┘
 ```
 
 It also works in your [Claude Code](https://claude.com/claude-code) statusline via `.claude/settings.json`.
@@ -42,13 +42,13 @@ It also works in your [Claude Code](https://claude.com/claude-code) statusline v
 **Before**: `{ "statusLine": { "type": "command", "command": "npx -y ccusage statusline" } }`
 
 ```
-🤖 Opus | 💰 N/A session / $8.14 today / $8.14 block (3h 21m left) | 🔥 $9.84/hr | 🧠 N/A
+🤖 Opus | 💰 $5.00 session / $8.14 today / $8.14 block (3h 21m left) | 🔥 $9.84/hr | 🧠 N/A
 ```
 
 **After**: `{ "statusLine": { "type": "command", "command": "npx -y ccusage statusline | npx -y @yamamuteki/scx -c JPY -r 155" } }`
 
 ```
-🤖 Opus | 💰 N/A session / ¥1,262 today / ¥1,262 block (3h 21m left) | 🔥 ¥1,525/hr | 🧠 N/A
+🤖 Opus | 💰 ¥775 session / ¥1,262 today / ¥1,262 block (3h 21m left) | 🔥 ¥1,525/hr | 🧠 N/A
 ```
 
 ## Installation
@@ -254,7 +254,7 @@ The `-y` on each `npx` is important: the statusline is non-interactive, so any f
 The resulting status line will look like:
 
 ```
-🤖 Opus | 💰 N/A session / ¥1,262 today / ¥1,262 block (3h 21m left) | 🔥 ¥1,525/hr | 🧠 N/A
+🤖 Opus | 💰 ¥775 session / ¥1,262 today / ¥1,262 block (3h 21m left) | 🔥 ¥1,525/hr | 🧠 N/A
 ```
 
 For best startup performance, install both tools globally and use the bare names:
