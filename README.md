@@ -11,6 +11,8 @@ Simple Currency eXchanger for stdin streams.
 
 It is designed to wrap tools like [`ccusage`](https://www.npmjs.com/package/ccusage) so their dollar figures can be read directly in your local currency.
 
+<img src="doc/demo.gif" alt="scx demo" width="800">
+
 **Before** — `npx ccusage`:
 
 ```

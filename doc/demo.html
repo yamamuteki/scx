@@ -424,7 +424,14 @@ async function scene_outro() {
   const p3 = promptLine();
   await sleep(100);
   await typeInto(p3, "open https://github.com/yamamuteki/scx", 30);
-  await sleep(1800);
+  // 1.8s loop-boundary breather. CDP screencast skips frames when nothing
+  // visibly changes, so nudge the cursor by 1px each tick to force frames
+  // (imperceptible visually, but enough for the recorder to capture).
+  const cursor = p3.querySelector(".cursor");
+  for (let i = 0; i < 18; i++) {
+    if (cursor) cursor.style.marginLeft = i % 2 === 0 ? "1px" : "2px";
+    await sleep(100);
+  }
 }
 
 async function scene1_ccusage() {
