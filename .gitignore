@@ -6,3 +6,5 @@ npm-debug.log*
 
 .claude/
 .playwright-mcp/
+
+*.local.md
