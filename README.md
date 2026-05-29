@@ -140,7 +140,7 @@ The rate comes from [Frankfurter](https://frankfurter.dev/), a free public API t
 
 #### Auto-updatable currencies
 
-`scx config update` works for any currency Frankfurter serves — most ISO 4217 codes (`JPY`, `EUR`, `GBP`, `VND`, `KWD`, … ~170 in total). Run `scx config update list` to print them all as `CODE  Name`, or browse the raw list at [`api.frankfurter.dev/v2/currencies`](https://api.frankfurter.dev/v2/currencies) (JSON).
+`scx config update` works for any currency Frankfurter serves — most ISO 4217 codes (`JPY`, `EUR`, `GBP`, `VND`, `KWD`, … 165 in total). Run `scx config update list` to print them all as `CODE  Name`, or browse the raw list at [`api.frankfurter.dev/v2/currencies`](https://api.frankfurter.dev/v2/currencies) (JSON).
 
 If a currency isn't served, `config update` exits with an error — supply the rate yourself with `-c <code> -r <number>` per run, or `scx config set currency <code>` then `scx config set rate <number>`.
 
