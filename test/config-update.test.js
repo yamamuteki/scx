@@ -64,7 +64,7 @@ describe("scx config update", () => {
     }
   });
 
-  test("uses the default currency when config has none", async () => {
+  test("defaults to USD (rate 1) when config has no currency", async () => {
     const { srv, url } = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(apiBody(155));
@@ -76,8 +76,9 @@ describe("scx config update", () => {
       });
       assert.equal(status, 0);
       const cfg = readXdgConfig(xdg);
-      assert.equal(cfg.currency, "JPY");
-      assert.equal(cfg.rate.currency, "JPY");
+      assert.equal(cfg.currency, "USD");
+      assert.equal(cfg.rate.currency, "USD");
+      assert.equal(cfg.rate.value, 1);
     } finally {
       await stopServer(srv);
     }

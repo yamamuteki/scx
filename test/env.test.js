@@ -8,7 +8,7 @@ describe("environment variables", () => {
       env: { SCX_RATE: "155" },
     });
     assert.equal(status, 0);
-    assert.match(stdout, /¥155/);
+    assert.match(stdout, /\$155\.00/);
   });
 
   test("SCX_CURRENCY provides target currency when -c is not given", () => {
@@ -32,7 +32,7 @@ describe("environment variables", () => {
       env: { SCX_RATE: "999" },
     });
     assert.equal(status, 0);
-    assert.match(stdout, /¥100/);
+    assert.match(stdout, /\$100\.00/);
   });
 
   test("CLI -c overrides SCX_CURRENCY", () => {
@@ -61,7 +61,7 @@ describe("environment variables", () => {
 
   test("empty SCX_RATE is treated as unset", () => {
     const { status, stderr } = runScx([], "Total: $1.00", {
-      env: { SCX_RATE: "" },
+      env: { SCX_RATE: "", SCX_CURRENCY: "JPY" },
     });
     assert.equal(status, 1);
     assert.match(stderr, /rate is required/);

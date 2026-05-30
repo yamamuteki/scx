@@ -45,12 +45,12 @@ describe("--version / --help", () => {
 });
 
 describe("argument validation", () => {
-  test("exits 1 when rate is not provided anywhere", () => {
-    const { status, stderr } = runScx([], "Total: $1.00", {
+  test("passes input through at USD rate 1 when nothing is configured", () => {
+    const { status, stdout } = runScx([], "Total: $1.00", {
       env: { SCX_RATE: "" },
     });
-    assert.equal(status, 1);
-    assert.match(stderr, /rate is required/);
+    assert.equal(status, 0);
+    assert.equal(stdout, "Total: $1.00");
   });
 
   test("exits 1 when --rate is not numeric", () => {
@@ -107,7 +107,7 @@ describe("TTY stdin guard", () => {
   test("does not trigger when stdin is piped (with content)", () => {
     const { status, stdout } = runScx(["-r", "155"], "Total: $1.00");
     assert.equal(status, 0);
-    assert.match(stdout, /¥155/);
+    assert.match(stdout, /\$155\.00/);
   });
 });
 

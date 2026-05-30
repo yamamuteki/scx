@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 const packageJsonPath = join(__dirname, "..", "package.json");
 const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
-const DEFAULT_CURRENCY = "JPY";
+const DEFAULT_CURRENCY = "USD";
 const DEFAULT_LOCALE = "en-US";
 const DEFAULT_JSON_COST_KEYS = ["totalCost", "costUSD", "cost", "costPerHour"];
 const VALID_SET_CONFIG_KEYS = ["currency", "rate", "locale"];
@@ -93,7 +93,7 @@ program
   )
   .option(
     "-r, --rate <number>",
-    "exchange rate from USD to target currency (env: SCX_RATE, config: rate.value)",
+    "exchange rate from USD to target currency (default: 1, env: SCX_RATE, config: rate.value)",
   )
   .option(
     "-l, --locale <locale>",
@@ -116,7 +116,7 @@ program
     "after",
     `
 Examples:
-  $ scx config update                              # one-time setup
+  $ scx config update -c JPY                       # one-time setup (USD->JPY)
   $ scx config show                                # see your settings
   $ echo 'Total: $1.00' | scx                      # quick test
   $ ccusage | scx                                  # main use case (uses config)
@@ -134,7 +134,7 @@ const configCmd = program
     "after",
     `
 Examples:
-  $ scx config update                # fetch USD->JPY (or your config currency)
+  $ scx config update -c JPY         # fetch USD->JPY and store it
   $ scx config update -c EUR         # fetch USD->EUR (makes EUR the default currency)
   $ scx config update list           # list the currencies config update can fetch
   $ scx config show                  # see current settings + source
@@ -214,8 +214,20 @@ function runConvert() {
   const options = program.opts();
   const config = loadConfig();
 
-  const rawCurrency =
-    options.currency ?? envOr("SCX_CURRENCY") ?? config?.currency ?? DEFAULT_CURRENCY;
+  // -c and -r are a pair on the CLI: choosing a currency by flag always
+  // requires its rate by flag, even when env or config could supply one.
+  if (options.currency !== undefined && options.rate === undefined) {
+    const code = String(options.currency).toUpperCase();
+    process.stderr.write(
+      "scx: -c/--currency requires -r/--rate.\n" +
+        "Pass a rate, or fetch and store one:\n" +
+        `  $ scx config update -c ${code}\n`,
+    );
+    process.exit(1);
+  }
+
+  const explicitCurrency = options.currency ?? envOr("SCX_CURRENCY") ?? config?.currency;
+  const rawCurrency = explicitCurrency ?? DEFAULT_CURRENCY;
   const rawLocale = options.locale ?? envOr("SCX_LOCALE") ?? config?.locale ?? DEFAULT_LOCALE;
 
   const currency = String(rawCurrency).toUpperCase();
@@ -236,16 +248,17 @@ function runConvert() {
     }
   }
 
+  // No rate resolved. If no currency was chosen at all, default to USD at rate
+  // 1 so amounts pass through. If a currency was chosen (env/config), a rate is
+  // required — never silently apply 1:1 across currencies.
+  if (rawRate === undefined && explicitCurrency === undefined) {
+    rawRate = 1;
+  }
+
   if (rawRate === undefined) {
-    let msg;
-    if (configRateMismatch) {
-      msg = `scx: rate is required. Config has a rate for ${configRateMismatch.configRateCurrency} but currency is ${configRateMismatch.currency}. To refresh:\n  $ scx config update -c ${configRateMismatch.currency}\n`;
-    } else {
-      msg =
-        "scx: rate is required. Run one of:\n" +
-        "  $ scx config update         # fetch USD->JPY from frankfurter.dev\n" +
-        "  $ scx config update -c EUR  # or any other currency\n";
-    }
+    const msg = configRateMismatch
+      ? `scx: rate is required for ${currency}. The stored rate is for ${configRateMismatch.configRateCurrency}; refresh it:\n  $ scx config update -c ${currency}\n`
+      : `scx: rate is required for ${currency}. Pass -r, or run:\n  $ scx config update -c ${currency}\n`;
     process.stderr.write(msg);
     process.exit(1);
   }
@@ -341,14 +354,15 @@ function runConvert() {
       [
         "scx: stdin is a terminal. scx reads USD amounts from a pipe and converts them.",
         "",
-        "First-time setup (one command):",
-        "  $ scx config update         # fetch USD->JPY (default)",
+        "By default scx targets USD (rate 1), so amounts pass through unchanged.",
+        "To convert to your currency, set it up once:",
+        "  $ scx config update -c JPY  # fetch USD->JPY and store it",
         "  $ scx config update -c EUR  # or any other currency",
         "",
         "Then pipe input:",
         "  $ echo 'Total: $1.00' | scx",
         "  $ ccusage | scx",
-        "  $ ccusage | scx -c JPY -r 155        # one-shot (no setup needed)",
+        "  $ ccusage | scx -c JPY -r 155        # one-shot",
         "",
         "Run 'scx --help' for all commands.",
         "",
@@ -422,6 +436,8 @@ function runConfigShow() {
     config.rate.currency.toUpperCase() !== effectiveCurrency
   ) {
     rateLine = `rate      (not set; config has ${config.rate.value} for ${config.rate.currency.toUpperCase()} but currency is ${effectiveCurrency})`;
+  } else if (effectiveCurrency === "USD" && currencySource === "default") {
+    rateLine = "rate      1   (default: USD->USD)";
   }
 
   const path = configPathForRead() ?? `${configPathForWrite()} (not created yet)`;

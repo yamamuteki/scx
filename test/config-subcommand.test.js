@@ -83,9 +83,9 @@ describe("scx config show", () => {
       env: { XDG_CONFIG_HOME: xdg },
     });
     assert.equal(status, 0);
-    assert.match(stdout, /currency.*JPY.*default/);
+    assert.match(stdout, /currency.*USD.*default/);
     assert.match(stdout, /locale.*en-US.*default/);
-    assert.match(stdout, /rate.*not set/i);
+    assert.match(stdout, /rate.*1.*default/i);
   });
 
   test("reflects env overrides", () => {
@@ -164,9 +164,9 @@ describe("scx config set", () => {
     });
     assert.equal(status, 0);
     const cfg = readXdgConfig(xdg);
-    assert.equal(cfg.currency, "JPY");
+    assert.equal(cfg.currency, "USD");
     assert.equal(cfg.rate.value, 155);
-    assert.equal(cfg.rate.currency, "JPY");
+    assert.equal(cfg.rate.currency, "USD");
   });
 
   test("set rate rejects non-positive value", () => {
@@ -326,7 +326,7 @@ describe("scx config delete", () => {
     const { stdout } = runScx(["config", "show"], "", {
       env: { XDG_CONFIG_HOME: xdg },
     });
-    assert.match(stdout, /currency.*JPY.*default/);
+    assert.match(stdout, /currency.*USD.*default/);
     assert.match(stdout, /locale.*en-US.*default/);
   });
 
@@ -346,7 +346,7 @@ describe("default conversion still works (no subcommand)", () => {
       env: { XDG_CONFIG_HOME: xdg },
     });
     assert.equal(status, 0);
-    assert.match(stdout, /¥155/);
+    assert.match(stdout, /\$155\.00/);
   });
 });
 

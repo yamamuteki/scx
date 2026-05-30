@@ -66,7 +66,7 @@ describe("XDG config file loading", () => {
       env: { XDG_CONFIG_HOME: xdg },
     });
     assert.equal(status, 0);
-    assert.match(stdout, /¥155/);
+    assert.match(stdout, /\$155\.00/);
   });
 });
 
@@ -171,7 +171,7 @@ describe("$SCX_CONFIG explicit path", () => {
 });
 
 describe("rate.currency consistency", () => {
-  test("config rate is ignored when -c overrides to a different currency", () => {
+  test("explicit -c requires -r even when config has a rate for another currency", () => {
     const xdg = makeXdgConfigHome({
       currency: "JPY",
       rate: { value: 155, currency: "JPY", updatedAt: "..." },
@@ -180,7 +180,7 @@ describe("rate.currency consistency", () => {
       env: { XDG_CONFIG_HOME: xdg },
     });
     assert.equal(status, 1);
-    assert.match(stderr, /rate is required/);
+    assert.match(stderr, /requires -r/);
   });
 
   test("rate-missing message hints at the currency mismatch", () => {
@@ -188,8 +188,8 @@ describe("rate.currency consistency", () => {
       currency: "JPY",
       rate: { value: 155, currency: "JPY", updatedAt: "..." },
     });
-    const { status, stderr } = runScx(["-c", "EUR"], "Total: $1.00", {
-      env: { XDG_CONFIG_HOME: xdg },
+    const { status, stderr } = runScx([], "Total: $1.00", {
+      env: { XDG_CONFIG_HOME: xdg, SCX_CURRENCY: "EUR" },
     });
     assert.equal(status, 1);
     assert.match(stderr, /JPY/);
@@ -243,7 +243,7 @@ describe("rate-missing message", () => {
   test("mentions the config option", () => {
     const xdg = makeXdgConfigHome(undefined);
     const { status, stderr } = runScx([], "Total: $1.00", {
-      env: { XDG_CONFIG_HOME: xdg },
+      env: { XDG_CONFIG_HOME: xdg, SCX_CURRENCY: "JPY" },
     });
     assert.equal(status, 1);
     assert.match(stderr, /rate is required/);

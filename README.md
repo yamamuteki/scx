@@ -29,10 +29,10 @@ echo 'Total: $1.00' | npx @yamamuteki/scx -c JPY -r 155
 
 `scx` reads USD amounts from a pipe and converts them to your local currency.
 
-First-time setup (one command):
+Out of the box `scx` targets USD and passes amounts through unchanged — no setup needed if you only read USD. To convert to your own currency, set it up once:
 
 ```bash
-scx config update         # fetch USD->JPY (default)
+scx config update -c JPY  # fetch USD->JPY and store it
 scx config update -c EUR  # or any other currency
 ```
 
@@ -41,9 +41,9 @@ This fetches the rate from [Frankfurter](https://frankfurter.dev/); subsequent i
 Then pipe input:
 
 ```bash
-echo 'Total: $1.00' | scx
-ccusage | scx
-ccusage | scx -c JPY -r 155        # one-shot (no setup needed)
+echo 'Total: $1.00' | scx              # USD passes through unchanged
+ccusage | scx                          # converts using your stored rate
+ccusage | scx -c JPY -r 155            # one-shot (currency and rate together)
 ```
 
 Run `scx --help` for all commands.
@@ -52,8 +52,8 @@ Run `scx --help` for all commands.
 
 | Option | Description | Default |
 |---|---|---|
-| `-c, --currency <code>` | ISO 4217 currency code to convert to (e.g. `JPY`, `EUR`, `VND`, `KRW`) | `JPY` |
-| `-r, --rate <number>` | Exchange rate from USD to the target currency. Required unless `SCX_RATE` or the config file supplies one. | — |
+| `-c, --currency <code>` | ISO 4217 currency code to convert to (e.g. `JPY`, `EUR`, `VND`, `KRW`) | `USD` |
+| `-r, --rate <number>` | Exchange rate from USD to the target currency. Defaults to `1` (USD passes through unchanged); required whenever you target another currency. Passing `-c` always requires `-r`. | `1` |
 | `-l, --locale <locale>` | BCP 47 locale used by `Intl.NumberFormat` (e.g. `en-US`, `ja-JP`, `de-DE`, `vi-VN`) | `en-US` |
 | `--json` | Treat stdin as a JSON document and convert cost fields in place. Parse errors exit with status 1 | off |
 | `--json-key <key>` | Extra key name(s) to treat as USD cost. Repeatable or comma-separated. | — |
@@ -113,7 +113,7 @@ All fields are optional. `rate.currency` records the target currency the rate co
 ### Managing the config file
 
 ```bash
-scx config update                   # fetch the latest rate (see "Automatic rate update")
+scx config update -c JPY            # fetch the latest rate (see "Automatic rate update")
 scx config update -c EUR            # fetch for a different currency (and switch to it)
 scx config update list              # list the currencies config update can fetch
 scx config show                     # show resolved settings with their source
@@ -132,7 +132,7 @@ scx config delete                   # delete the config file entirely
 Refresh the exchange rate with a single command — no manual lookup.
 
 ```bash
-scx config update                   # fetch USD->JPY (or your config currency) from frankfurter.dev
+scx config update -c JPY            # fetch USD->JPY from frankfurter.dev and store it
 scx config update -c EUR            # fetch USD->EUR (also makes EUR the default currency)
 ```
 
@@ -168,7 +168,7 @@ echo 'Today: $1.23 Total: $45.67' | npx @yamamuteki/scx
 # => Today: ¥191 Total: ¥7,079
 ```
 
-The following examples run with `scx config update`.
+The following examples run with `scx config update -c JPY`.
 
 Show `ccusage` output:
 
@@ -204,7 +204,7 @@ The most direct approach is to hard-code the rate in `.claude/settings.json`:
 }
 ```
 
-But the rate moves daily, and editing `.claude/settings.json` every time you want a fresh rate is annoying. Use `scx config update` instead — it keeps the rate in scx's own config:
+But the rate moves daily, and editing `.claude/settings.json` every time you want a fresh rate is annoying. Use `scx config update -c JPY` instead — it keeps the rate in scx's own config:
 
 ```json
 {
