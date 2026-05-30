@@ -1,6 +1,6 @@
 {
   "name": "@yamamuteki/scx",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "Simple Currency eXchanger for stdin streams",
   "author": "yamamuteki",
   "homepage": "https://github.com/yamamuteki/scx#readme",
